@@ -74,7 +74,7 @@ public class TestRunner {
         }
 
         //Выполняются методы с аннотациями @Test в соответствии с их приоритетом. Вначале выполняются те методы, у которых приоритет выше.
-        if (!listTests.isEmpty()){
+        if (!listTests.isEmpty()) {
 
             listTests.sort(Comparator.comparingInt(m -> m.getAnnotation(Test.class).priority()));
 
@@ -86,7 +86,7 @@ public class TestRunner {
                     if (beforeTest != null) {
                         beforeTest.invoke(null);
                     }
-                    
+
                     method.invoke(dataProcessorTests);
 
                     if (afterTest != null) {
@@ -107,18 +107,9 @@ public class TestRunner {
             }
         }
 
+        //Добавьте аннотацию @CsvSource ...
         if (csvSource != null) {
 
-            //System.out.println(csvSource);
-
-/*            List<String> annotationArgList = Arrays.stream(csvSource.getAnnotation(CsvSource.class).value().split(","))
-                    .map(String::trim)
-                    .toList();*/
-
-            //System.out.println("value: " + csvSource.getAnnotation(CsvSource.class).value());
-            //System.out.println("Типы: " +Arrays.toString(csvSource.getParameterTypes()));
-
-            //Class<?>[] paramTypes = csvSource.getParameterTypes();
             List<Class<?>> paramTypeList = Arrays.asList(csvSource.getParameterTypes());
             List<String> annotationArgList = Arrays.stream(csvSource.getAnnotation(CsvSource.class).value().split(","))
                     .map(String::trim)
@@ -126,24 +117,15 @@ public class TestRunner {
 
             Object[] convertedArgs = new Object[annotationArgList.size()];
 
-//            annotationArgList.forEach(System.out::println);
-//            paramTypeList.forEach(System.out::println);
-//
-//            System.out.println(annotationArgList.size());
-
             for (int i = 0; i < annotationArgList.size(); i++) {
-                if (annotationArgList.size() == paramTypeList.size()) {//Но должно ли совпадать ?
+                if (annotationArgList.size() == paramTypeList.size()) {
                     convertedArgs[i] = typeDefinition(annotationArgList.get(i), paramTypeList.get(i));
-                }else
+                } else
                     throw new ArrayIndexOutOfBoundsException("Не совпадает кол-во аргументов");
             }
 
-/*            Arrays.stream(convertedArgs).forEach(convertedArg -> {
-                System.out.println(convertedArg.getClass().getSimpleName());
-            });*/
-
             try {
-                csvSource.invoke(CsvSource.class,convertedArgs);
+                csvSource.invoke(CsvSource.class, convertedArgs);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
@@ -157,29 +139,21 @@ public class TestRunner {
         }
     }
 
-    private static void validStaticMethod (Method method, String annotationName){
-        if (!Modifier.isStatic(method.getModifiers())){
+    private static void validStaticMethod(Method method, String annotationName) {
+        if (!Modifier.isStatic(method.getModifiers())) {
             throw new RuntimeException("Метод с аннотацией @" + annotationName + " должен быть static!");
         }
     }
 
-    private static Object typeDefinition (String value, Class<?> type){
-/*        for (String elm : stringList){
-            if(elm.matches("-?\\d+")){
-                result.add(Integer.parseInt(elm));
-                //System.out.println("int");
-            } else if (elm.matches("[\\p{IsAlphabetic}\\s]+")) {
-                result.add(elm);
-                //System.out.println("String");
-            }
-        }*/
+    private static Object typeDefinition(String value, Class<?> type) {
+
         if (type == int.class || type == Integer.class) {
             return Integer.parseInt(value);
         } else if (type == boolean.class || type == Boolean.class) {
             return Boolean.parseBoolean(value);
         } else if (type == double.class || type == Double.class) {
             return Double.parseDouble(value);
-        }  else if (type == float.class || type == Float.class) {
+        } else if (type == float.class || type == Float.class) {
             return Float.parseFloat(value);
         } else if (type == String.class) {
             return value;
@@ -187,6 +161,4 @@ public class TestRunner {
 
         throw new RuntimeException("Данный тип не определен : " + type.getName());
     }
-
-
 }
