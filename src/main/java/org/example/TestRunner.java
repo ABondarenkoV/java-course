@@ -2,13 +2,11 @@ package org.example;
 
 import org.example.annotations.*;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 public class TestRunner {
     public static void runTests(Class<?> testClass) {
@@ -16,17 +14,26 @@ public class TestRunner {
         //Указанный класс загружается в память
         System.out.println("Запускаем тесты для класса: " + testClass.getName());
 
-
         Method[] methods = testClass.getMethods();
-        DataProcessorTests dataProcessorTests = new DataProcessorTests();
+        Object dataProcessorTests;
+        Constructor<?> constructor;
+        try {
+            constructor = testClass.getConstructor();
+            dataProcessorTests = constructor.newInstance();
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
+                 InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+
         int countBeforeSuite = 0;
         int countAfterSuite = 0;
-        Method beforeSuite = null;
-        Method afterSuite = null;
-        Method beforeTest = null;
-        Method afterTest = null;
-        Method csvSource = null;
         List<Method> listTests = new ArrayList<>();
+        List<Method> arrBeforeSuite = new ArrayList<>();
+        List<Method> arrAfterSuite = new ArrayList<>();
+        List<Method> arrBeforeTest = new ArrayList<>();
+        List<Method> arrAfterTest = new ArrayList<>();
+        List<Method> arrCsvSource = new ArrayList<>();
+
 
 /*      Блок с проверками:
         Происходит проверка что методов с аннотациями @BeforeSuite не больше одного
@@ -37,37 +44,43 @@ public class TestRunner {
             if (!method.getDeclaringClass().equals(testClass)) continue;
 
             if (method.isAnnotationPresent(BeforeSuite.class)) {
-                beforeSuite = method;
-                validStaticMethod(method, "BeforeSuite");
+                arrBeforeSuite.add(method);
                 countBeforeSuite++;
+                if (countBeforeSuite > 1) {
+                    throw new RuntimeException("Ошибка: больше одного метода с аннотацией @BeforeSuite!");
+                }
+                validStaticMethod(method, "BeforeSuite");
             }
             if (method.isAnnotationPresent(AfterSuite.class)) {
-                afterSuite = method;
-                validStaticMethod(method, "AfterSuite");
+                arrAfterSuite.add(method);
                 countAfterSuite++;
-            }
-            if (method.isAnnotationPresent(Test.class)) {
-                listTests.add(method);
+                if (countAfterSuite > 1) {
+                    throw new RuntimeException("Ошибка: больше одного метода с аннотацией @AfterSuite!");
+                }
+                validStaticMethod(method, "AfterSuite");
             }
             if (method.isAnnotationPresent(AfterTest.class)) {
-                afterTest = method;
+                arrAfterTest.add(method);
             }
             if (method.isAnnotationPresent(BeforeTest.class)) {
-                beforeTest = method;
+                arrBeforeTest.add(method);
             }
             if (method.isAnnotationPresent(CsvSource.class)) {
-                csvSource = method;
-
+                arrCsvSource.add(method);
+            }
+            if (method.isAnnotationPresent(Test.class)) {
+                if (method.getAnnotation(Test.class).priority() < 1 || method.getAnnotation(Test.class).priority() > 10){
+                    throw new RuntimeException("Ошибка: у метода " + method.getName() + " int в пределах от 1 до 10 включительно");
+                }
+                listTests.add(method);
             }
         }
 
-        checkSingleAnnotationCount(countBeforeSuite, "BeforeSuite");
-        checkSingleAnnotationCount(countAfterSuite, "AfterSuite");
-
         //Выполняется метод с аннотацией @BeforeSuite, если такой есть
-        if (beforeSuite != null) {
+        for (Method elBeforeSuite : arrBeforeSuite) {
             try {
-                beforeSuite.invoke(null);
+                assert elBeforeSuite != null;
+                elBeforeSuite.invoke(null);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
@@ -78,19 +91,18 @@ public class TestRunner {
 
             listTests.sort(Comparator.comparingInt(m -> m.getAnnotation(Test.class).priority()));
 
-
             for (Method method : listTests) {
                 try {
                     //System.out.println("Выполняется тест: " + method.getName() + ", приоритет: " + method.getAnnotation(Test.class).priority());
                     //Можете добавить аннотации @BeforeTest и @AfterTest, методы с такими аннотациями должны выполняться перед каждым и после каждого теста соответственно.
-                    if (beforeTest != null) {
-                        beforeTest.invoke(null);
+                    for (Method elBeforeTest : arrBeforeTest) {
+                        elBeforeTest.invoke(null);
                     }
 
                     method.invoke(dataProcessorTests);
 
-                    if (afterTest != null) {
-                        afterTest.invoke(null);
+                    for (Method elAfterTest : arrAfterTest) {
+                        elAfterTest.invoke(null);
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new RuntimeException(e);
@@ -99,33 +111,33 @@ public class TestRunner {
         }
 
         //Выполняется метод с аннотацией @AfterSuite, если такой ест
-        if (afterSuite != null) {
+
+        for (Method elAfterSuite : arrAfterSuite) {
             try {
-                afterSuite.invoke(null);
+                assert elAfterSuite != null;
+                elAfterSuite.invoke(null);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
         }
 
         //Добавьте аннотацию @CsvSource ...
-        if (csvSource != null) {
 
-            List<Class<?>> paramTypeList = Arrays.asList(csvSource.getParameterTypes());
-            List<String> annotationArgList = Arrays.stream(csvSource.getAnnotation(CsvSource.class).value().split(","))
-                    .map(String::trim)
-                    .toList();
+        for (Method elCsvSource : arrCsvSource) {
+            assert elCsvSource != null;
+            List<Class<?>> paramTypeList = Arrays.asList(elCsvSource.getParameterTypes());
+            List<String> annotationArgList = Arrays.stream(elCsvSource.getAnnotation(CsvSource.class).value().split(",")).map(String::trim).toList();
 
             Object[] convertedArgs = new Object[annotationArgList.size()];
 
             for (int i = 0; i < annotationArgList.size(); i++) {
                 if (annotationArgList.size() == paramTypeList.size()) {
                     convertedArgs[i] = typeDefinition(annotationArgList.get(i), paramTypeList.get(i));
-                } else
-                    throw new ArrayIndexOutOfBoundsException("Не совпадает кол-во аргументов");
+                } else throw new ArrayIndexOutOfBoundsException("Не совпадает кол-во аргументов");
             }
 
             try {
-                csvSource.invoke(CsvSource.class, convertedArgs);
+                elCsvSource.invoke(CsvSource.class, convertedArgs);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
