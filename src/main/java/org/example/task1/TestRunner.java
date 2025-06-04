@@ -1,6 +1,6 @@
-package org.example;
+package org.example.task1;
 
-import org.example.annotations.*;
+import org.example.task1.annotations.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
