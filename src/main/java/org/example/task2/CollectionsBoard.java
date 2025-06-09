@@ -53,7 +53,7 @@ public class CollectionsBoard {
         //4. Имеется список объектов типа Сотрудник (имя, возраст, должность), посчитайте средний возраст сотрудников с должностью «Инженер»
         listEmpl.stream()
                 .filter(e -> e.getPosition() == Employee.Position.ENGINEER)
-                .mapToInt(Employee::getAge)
+                .mapToDouble(Employee::getAge)
                 .average()
                 .ifPresent(avg -> System.out.println("AVG age: " + avg));
 
