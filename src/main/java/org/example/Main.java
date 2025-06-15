@@ -1,5 +1,6 @@
 package org.example;
 
+import jdk.jfr.StackTrace;
 import org.example.task1.DataProcessorTests;
 import org.example.task1.TestRunner;
 import org.example.task2.CollectionsBoard;
@@ -8,6 +9,7 @@ import org.example.task3.ThreadPool;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
@@ -19,9 +21,9 @@ public class Main {
         //CollectionsBoard.collectionsRun();
 
         //Task3
-        ThreadPool threadPool = new ThreadPool(3);
+        ThreadPool threadPool = new ThreadPool(2);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 1; i < 10; i++) {
             int taskId = i;
             threadPool.execute(() -> {
                 try {
@@ -30,8 +32,25 @@ public class Main {
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-
             });
+        }
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        threadPool.shutdown();
+        threadPool.awaitTermination();
+        System.out.println("Главный поток  = Финал - " + Thread.currentThread().getName());
+
+        try {
+            threadPool.execute(() -> {
+                System.out.println("Эта задача не должна быть выполнена: " + Thread.currentThread().getName());
+            });
+        } catch (RuntimeException e) {
+            e.printStackTrace();
         }
 
 
@@ -48,52 +67,6 @@ public class Main {
         pool.execute(() -> {
             System.out.println("Задача 3 выполняется в " + Thread.currentThread().getName());
         });*/
-
-
-/*
-        Thread thread = new Thread(() ->{
-            for (int i = 0; i < 10; i++) {
-                System.out.println(i);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-
-        thread.start();
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("Main thread started");
-*/
-
-
-/*        ExecutorService executorService = Executors.newFixedThreadPool(3);
-
-        for (int i = 0; i < 10; i++) {
-           executorService.execute(() -> {
-               try {
-                   Thread.sleep(1000);
-                   System.out.println(Thread.currentThread().getName());
-               } catch (InterruptedException e) {
-                   throw new RuntimeException(e);
-               }
-
-           });
-        }
-        try {
-            executorService.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        executorService.shutdown();*/
-
-
-
 
     }
 
