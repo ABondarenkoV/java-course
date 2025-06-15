@@ -83,8 +83,12 @@ public class ThreadPool {
                     task = taskQueue.removeFirst();
                     System.out.println("Задача получена: " + Thread.currentThread().getName());
                 }
-                task.run();
-                System.out.println("Выполнение задачи...");
+                try {
+                    task.run();
+                    System.out.println("Выполнение задачи...");
+                } catch (RuntimeException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
